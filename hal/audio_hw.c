@@ -2162,7 +2162,8 @@ static uint32_t out_get_sample_rate(const struct audio_stream *stream)
     return out->sample_rate;
 }
 
-static int out_set_sample_rate(struct audio_stream *stream __unused, uint32_t rate __unused)
+static int out_set_sample_rate(struct audio_stream *stream __unused,
+                               uint32_t rate __unused)
 {
     return -ENOSYS;
 }
@@ -2196,7 +2197,8 @@ static audio_format_t out_get_format(const struct audio_stream *stream)
     return out->format;
 }
 
-static int out_set_format(struct audio_stream *stream __unused, audio_format_t format __unused)
+static int out_set_format(struct audio_stream *stream __unused,
+                          audio_format_t format __unused)
 {
     return -ENOSYS;
 }
@@ -2252,7 +2254,8 @@ static int out_standby(struct audio_stream *stream)
     return 0;
 }
 
-static int out_dump(const struct audio_stream *stream __unused, int fd __unused)
+static int out_dump(const struct audio_stream *stream __unused,
+                    int fd __unused)
 {
     return 0;
 }
@@ -3073,7 +3076,8 @@ static uint32_t in_get_sample_rate(const struct audio_stream *stream)
     return in->config.rate;
 }
 
-static int in_set_sample_rate(struct audio_stream *stream __unused, uint32_t rate __unused)
+static int in_set_sample_rate(struct audio_stream *stream __unused,
+                              uint32_t rate __unused)
 {
     return -ENOSYS;
 }
@@ -3098,14 +3102,15 @@ static uint32_t in_get_channels(const struct audio_stream *stream)
     return in->channel_mask;
 }
 
-static audio_format_t in_get_format(const struct audio_stream *stream __unused)
+static audio_format_t in_get_format(const struct audio_stream *stream)
 {
     struct stream_in *in = (struct stream_in *)stream;
 
     return in->format;
 }
 
-static int in_set_format(struct audio_stream *stream __unused, audio_format_t format __unused)
+static int in_set_format(struct audio_stream *stream __unused,
+                         audio_format_t format __unused)
 {
     return -ENOSYS;
 }
@@ -3151,7 +3156,8 @@ static int in_standby(struct audio_stream *stream)
     return status;
 }
 
-static int in_dump(const struct audio_stream *stream __unused, int fd __unused)
+static int in_dump(const struct audio_stream *stream __unused,
+                   int fd __unused)
 {
     return 0;
 }
@@ -3216,8 +3222,8 @@ error:
     return ret;
 }
 
-static char* in_get_parameters(const struct audio_stream *stream __unused,
-                               const char *keys __unused)
+static char* in_get_parameters(const struct audio_stream *stream,
+                               const char *keys)
 {
     struct stream_in *in = (struct stream_in *)stream;
     struct str_parms *query = str_parms_create_str(keys);
@@ -3247,7 +3253,8 @@ static char* in_get_parameters(const struct audio_stream *stream __unused,
     return str;
 }
 
-static int in_set_gain(struct audio_stream_in *stream __unused, float gain __unused)
+static int in_set_gain(struct audio_stream_in *stream __unused,
+                       float gain __unused)
 {
     return 0;
 }
@@ -4105,10 +4112,16 @@ static char* adev_get_parameters(const struct audio_hw_device *dev,
     char value[256] = {0};
     int ret = 0;
 
-static int adev_init_check(const struct audio_hw_device *dev __unused)
-{
-    return 0;
-}
+    if (!query || !reply) {
+        if (reply) {
+            str_parms_destroy(reply);
+        }
+        if (query) {
+            str_parms_destroy(query);
+        }
+        ALOGE("adev_get_parameters: failed to create query or reply");
+        return NULL;
+    }
 
     ret = str_parms_get_str(query, "SND_CARD_STATUS", value,
                             sizeof(value));
@@ -4153,7 +4166,8 @@ static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
     return ret;
 }
 
-static int adev_set_master_volume(struct audio_hw_device *dev __unused, float volume __unused)
+static int adev_set_master_volume(struct audio_hw_device *dev __unused,
+                                  float volume __unused)
 {
     return -ENOSYS;
 }
@@ -4164,12 +4178,14 @@ static int adev_get_master_volume(struct audio_hw_device *dev __unused,
     return -ENOSYS;
 }
 
-static int adev_set_master_mute(struct audio_hw_device *dev __unused, bool muted __unused)
+static int adev_set_master_mute(struct audio_hw_device *dev __unused,
+                                bool muted __unused)
 {
     return -ENOSYS;
 }
 
-static int adev_get_master_mute(struct audio_hw_device *dev __unused, bool *muted __unused)
+static int adev_get_master_mute(struct audio_hw_device *dev __unused,
+                                bool *muted __unused)
 {
     return -ENOSYS;
 }
@@ -4222,7 +4238,7 @@ static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev __unu
 }
 
 static int adev_open_input_stream(struct audio_hw_device *dev,
-                                  audio_io_handle_t handle __unused,
+                                  audio_io_handle_t handle,
                                   audio_devices_t devices,
                                   struct audio_config *config,
                                   struct audio_stream_in **stream_in,
@@ -4414,7 +4430,7 @@ err_open:
     return ret;
 }
 
-static void adev_close_input_stream(struct audio_hw_device *dev __unused,
+static void adev_close_input_stream(struct audio_hw_device *dev,
                                     struct audio_stream_in *stream)
 {
     int ret;
@@ -4423,10 +4439,8 @@ static void adev_close_input_stream(struct audio_hw_device *dev __unused,
 
     ALOGD("%s: enter:stream_handle(%p)",__func__, in);
 
-static int adev_dump(const audio_hw_device_t *device __unused, int fd __unused)
-{
-    return 0;
-}
+    /* Disable echo reference while closing input stream */
+    platform_set_echo_reference(adev, false, AUDIO_DEVICE_NONE);
 
     if (in->usecase == USECASE_COMPRESS_VOIP_CALL) {
         pthread_mutex_lock(&adev->lock);
